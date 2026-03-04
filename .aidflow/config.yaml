@@ -1,0 +1,14 @@
+# aidflow configuration
+version: 1
+
+worktree:
+  auto: false
+  path: ".aidflow/worktrees"
+  branch_prefix: ""
+
+session:
+  history_path: ".aidflow/history"
+  date_format: "YYMMDD"
+
+guides:
+  path: ".aidflow/guides"
