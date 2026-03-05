@@ -155,7 +155,7 @@ class JwtAuthFilterTest {
         @DisplayName("잘못된 형식의 Authorization 헤더 시 401")
         void invalidAuthHeaderReturns401() {
             MockServerHttpRequest request = MockServerHttpRequest
-                    .get("/api/v1/members/me")
+                    .put("/api/v1/members/me")
                     .header(HttpHeaders.AUTHORIZATION, "InvalidToken")
                     .build();
             MockServerWebExchange exchange = MockServerWebExchange.from(request);
@@ -178,7 +178,7 @@ class JwtAuthFilterTest {
                     .compact();
 
             MockServerHttpRequest request = MockServerHttpRequest
-                    .get("/api/v1/members/me")
+                    .put("/api/v1/members/me")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + expiredToken)
                     .build();
             MockServerWebExchange exchange = MockServerWebExchange.from(request);

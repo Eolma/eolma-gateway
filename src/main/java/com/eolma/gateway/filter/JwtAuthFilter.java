@@ -42,7 +42,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             new PathRule(HttpMethod.GET, "/api/v1/products/**"),
             new PathRule(HttpMethod.GET, "/api/v1/auctions/**"),
             new PathRule(HttpMethod.POST, "/api/v1/auth/oauth/login"),
-            new PathRule(HttpMethod.POST, "/api/v1/auth/oauth/link")
+            new PathRule(HttpMethod.POST, "/api/v1/auth/oauth/link"),
+            new PathRule(HttpMethod.GET, "/api/v1/members/**")
     );
 
     // WebSocket 경로는 쿼리 파라미터로 토큰 검증 (별도 처리)
