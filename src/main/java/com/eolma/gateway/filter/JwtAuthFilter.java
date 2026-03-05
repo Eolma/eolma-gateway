@@ -40,7 +40,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             new PathRule(HttpMethod.POST, "/api/v1/auth/login"),
             new PathRule(HttpMethod.POST, "/api/v1/auth/refresh"),
             new PathRule(HttpMethod.GET, "/api/v1/products/**"),
-            new PathRule(HttpMethod.GET, "/api/v1/auctions/**")
+            new PathRule(HttpMethod.GET, "/api/v1/auctions/**"),
+            new PathRule(HttpMethod.POST, "/api/v1/auth/oauth/login"),
+            new PathRule(HttpMethod.POST, "/api/v1/auth/oauth/link")
     );
 
     // WebSocket 경로는 쿼리 파라미터로 토큰 검증 (별도 처리)
@@ -56,8 +58,24 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String path = request.getURI().getPath();
         HttpMethod method = request.getMethod();
 
-        // WebSocket 경로는 통과 (연결 시 별도 검증)
+        // WebSocket 경로: token 쿼리 파라미터로 JWT 검증 후 X-User-Id 주입
         if (path.startsWith(WS_PATH_PREFIX)) {
+            String tokenParam = request.getQueryParams().getFirst("token");
+            if (tokenParam != null && !tokenParam.isBlank()) {
+                try {
+                    Claims wsClaims = Jwts.parser()
+                            .verifyWith(secretKey)
+                            .build()
+                            .parseSignedClaims(tokenParam)
+                            .getPayload();
+                    ServerHttpRequest wsRequest = request.mutate()
+                            .header("X-User-Id", wsClaims.getSubject())
+                            .build();
+                    return chain.filter(exchange.mutate().request(wsRequest).build());
+                } catch (Exception ex) {
+                    log.warn("WebSocket JWT validation failed: {}", ex.getMessage());
+                }
+            }
             return chain.filter(exchange);
         }
 
