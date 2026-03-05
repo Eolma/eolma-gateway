@@ -79,18 +79,18 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // 공개 경로 확인
+        // 공개 경로: JWT가 있으면 검증 시도하되, 실패해도 차단하지 않음
         if (isPublicPath(method, path)) {
-            return chain.filter(exchange);
+            ServerWebExchange mutated = tryInjectUserHeaders(exchange);
+            return chain.filter(mutated);
         }
 
-        // Authorization 헤더 확인
+        // 비공개 경로: JWT 필수
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
             return unauthorized(exchange);
         }
 
-        // JWT 검증
         String token = authHeader.substring(BEARER_PREFIX.length());
         try {
             Claims claims = Jwts.parser()
@@ -99,17 +99,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            String userId = claims.getSubject();
-            String email = claims.get("email", String.class);
-            String role = claims.get("role", String.class);
-
-            // 하위 서비스에 사용자 정보 헤더 주입
-            ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Id", userId)
-                    .header("X-User-Email", email != null ? email : "")
-                    .header("X-User-Role", role != null ? role : "")
-                    .build();
-
+            ServerHttpRequest mutatedRequest = injectHeaders(request, claims);
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
 
         } catch (Exception e) {
@@ -133,6 +123,44 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             return path.startsWith(prefix);
         }
         return pattern.equals(path);
+    }
+
+    /**
+     * Authorization 헤더가 있으면 JWT 검증 후 사용자 정보 헤더 주입을 시도한다.
+     * 헤더가 없거나 검증 실패 시 원본 exchange를 그대로 반환한다.
+     */
+    private ServerWebExchange tryInjectUserHeaders(ServerWebExchange exchange) {
+        String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+            return exchange;
+        }
+
+        String token = authHeader.substring(BEARER_PREFIX.length());
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            ServerHttpRequest mutatedRequest = injectHeaders(exchange.getRequest(), claims);
+            return exchange.mutate().request(mutatedRequest).build();
+        } catch (Exception e) {
+            log.debug("Optional JWT validation failed on public path: {}", e.getMessage());
+            return exchange;
+        }
+    }
+
+    private ServerHttpRequest injectHeaders(ServerHttpRequest request, Claims claims) {
+        String userId = claims.getSubject();
+        String email = claims.get("email", String.class);
+        String role = claims.get("role", String.class);
+
+        return request.mutate()
+                .header("X-User-Id", userId)
+                .header("X-User-Email", email != null ? email : "")
+                .header("X-User-Role", role != null ? role : "")
+                .build();
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange) {
