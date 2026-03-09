@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.UUID;
+import com.github.f4b6a3.tsid.TsidCreator;
 
 /**
  * 모든 요청에 X-Trace-Id 헤더를 생성하여 하위 서비스로 전파한다.
@@ -23,7 +23,7 @@ public class TraceIdFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String traceId = exchange.getRequest().getHeaders().getFirst(TRACE_ID_HEADER);
         if (traceId == null || traceId.isBlank()) {
-            traceId = UUID.randomUUID().toString();
+            traceId = TsidCreator.getTsid().toString();
         }
 
         ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()

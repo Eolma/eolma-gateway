@@ -35,6 +35,9 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
+    // ID
+    implementation("com.github.f4b6a3:tsid-creator:5.2.6")
+
     // Logging
     implementation("net.logstash.logback:logstash-logback-encoder:8.0")
 
